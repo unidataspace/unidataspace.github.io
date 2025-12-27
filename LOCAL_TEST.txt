@@ -1,0 +1,1 @@
+로컬: python scripts/build.py 실행 후 site/index.html 열기

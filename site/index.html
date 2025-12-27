@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>전국 공영주차장 찾기</title>
+  <meta name="description" content="주소/좌표/유형 기준으로 빠르게 검색" />
+  <link rel="stylesheet" href="/assets/style.css" />
+  
+</head>
+<body>
+  <header class="wrap header">
+    <div class="brand">
+      <a class="brand__name" href="/">전국 공영주차장 찾기</a>
+      <div class="brand__tagline">주소/좌표/유형 기준으로 빠르게 검색</div>
+    </div>
+    <nav class="nav">
+      <a href="/">검색</a>
+      <a href="/regions/">지역별</a>
+      <a href="/about/">소개</a>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    
+    
+<div class="card">
+  <h1 class="h1">전국 공영주차장 찾기</h1>
+  <div class="notice">
+    키워드를 입력하면 이름/주소/기관 기준으로 필터링됩니다.
+    (실데이터를 넣으면 전국 단위로 동작합니다.)
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2 class="h2">검색</h2>
+    <input id="q" class="input" placeholder="예: 서울 중구 / 부산역 / 태화강 / 주차장명..." />
+    <div style="height:10px"></div>
+    <select id="region" class="input">
+      <option value="">전체 지역</option>
+      <option value="강원">강원</option>
+<option value="경기">경기</option>
+<option value="광주">광주</option>
+<option value="대구">대구</option>
+<option value="대전">대전</option>
+<option value="부산">부산</option>
+<option value="서울">서울</option>
+<option value="울산">울산</option>
+<option value="인천">인천</option>
+<option value="제주">제주</option>
+    </select>
+    <div style="height:12px"></div>
+    <div class="muted small" id="count"></div>
+    <div style="height:10px"></div>
+    <table class="table" id="tbl">
+      <thead><tr><th>이름</th><th>주소</th><th>유형</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2 class="h2">지역별 바로가기</h2>
+    <div class="btnrow">
+      <a class="btn" href="/regions/강원/">강원</a>
+<a class="btn" href="/regions/경기/">경기</a>
+<a class="btn" href="/regions/광주/">광주</a>
+<a class="btn" href="/regions/대구/">대구</a>
+<a class="btn" href="/regions/대전/">대전</a>
+<a class="btn" href="/regions/부산/">부산</a>
+<a class="btn" href="/regions/서울/">서울</a>
+<a class="btn" href="/regions/울산/">울산</a>
+<a class="btn" href="/regions/인천/">인천</a>
+<a class="btn" href="/regions/제주/">제주</a>
+    </div>
+    <div style="height:12px"></div>
+    <div class="muted small">지역이 너무 많으면 일부만 표시됩니다.</div>
+  </div>
+</div>
+
+<script>
+async function main(){
+  const res = await fetch('/data/parking.json');
+  const items = await res.json();
+
+  const q = document.getElementById('q');
+  const region = document.getElementById('region');
+  const tbody = document.querySelector('#tbl tbody');
+  const count = document.getElementById('count');
+
+  function esc(s){return (s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
+
+  function render(){
+    const qq = (q.value||'').trim().toLowerCase();
+    const rr = region.value;
+    const filtered = items.filter(it => {
+      if (rr && it.region !== rr) return false;
+      if (!qq) return true;
+      const hay = (it.name + ' ' + it.address + ' ' + it.org).toLowerCase();
+      return hay.includes(qq);
+    }).slice(0, 200);
+
+    count.textContent = '결과: ' + filtered.length + '개 (최대 200개 표시)';
+    tbody.innerHTML = filtered.map(it => `
+      <tr>
+        <td><a href="/p/${it.id}/">${esc(it.name)}</a><div class="badge">${esc(it.region)}</div></td>
+        <td>${esc(it.address||'')}</td>
+        <td>${esc(it.type||'')}</td>
+      </tr>
+    `).join('');
+  }
+
+  q.addEventListener('input', render);
+  region.addEventListener('change', render);
+  render();
+}
+main();
+</script>
+
+    
+  </main>
+
+  <footer class="wrap footer">
+    <div class="muted small">데이터 출처: 공공데이터포털(한국교통안전공단 ‘전국공영주차장정보’ 등). 이용허락범위 표기를 확인하고 출처를 표시하세요.</div>
+  </footer>
+</body>
+</html>
