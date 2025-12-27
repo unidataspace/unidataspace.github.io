@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv, json, re, hashlib
 from pathlib import Path
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
@@ -52,19 +53,32 @@ def normalize_headers(headers: list[str]) -> dict[str, int]:
             norm.setdefault("phone", i)
     return norm
 
-def load_items(csv_path: Path) -> list[dict]:
-    def open_csv_any_encoding(csv_path):
-    # UTF-8 우선, 안 되면 CP949/EUC-KR로 재시도
-    for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+def open_csv_any_encoding(path: Path):
+    """
+    UTF-8이 아닌 공공데이터(CP949/EUC-KR)를 고려해서 여러 인코딩을 시도.
+    UnicodeDecodeError는 open()이 아니라 read() 시점에 나올 수 있으므로
+    짧게 test-read 후 되감기(seek) 합니다.
+    """
+    encodings = ("utf-8-sig", "utf-8", "cp949", "euc-kr")
+    last_err = None
+
+    for enc in encodings:
+        f = None
         try:
-            return open(csv_path, "r", encoding=enc, newline="")
-        except UnicodeDecodeError:
-            continue
-    # 마지막: 그래도 안 되면 예외 발생
-    return open(csv_path, "r", encoding="utf-8", errors="strict", newline="")
+            f = open(path, "r", encoding=enc, newline="")
+            f.read(2048)   # test decode
+            f.seek(0)
+            return f
+        except UnicodeDecodeError as e:
+            last_err = e
+            if f:
+                f.close()
 
-with open_csv_any_encoding(csv_path) as f:
+    # 모두 실패하면 마지막 에러를 그대로 올림
+    raise last_err
 
+def load_items(csv_path: Path) -> list[dict]:
+    with open_csv_any_encoding(csv_path) as f:
         reader = csv.reader(f)
         headers = next(reader, [])
         if not headers:
@@ -292,14 +306,14 @@ def build_regions(cfg, tpl, items):
 def map_links(it):
     name = it.get("name","")
     addr = it.get("address","")
-    # Search-based links are robust even if coords missing
     q = addr or name
     if not q:
         return ""
+    qq = quote(q, safe="")
     return f"""
 <div class="btnrow">
-  <a class="btn" href="https://map.naver.com/v5/search/{q}" target="_blank" rel="noopener">네이버지도</a>
-  <a class="btn" href="https://map.kakao.com/link/search/{q}" target="_blank" rel="noopener">카카오지도</a>
+  <a class="btn" href="https://map.naver.com/v5/search/{qq}" target="_blank" rel="noopener">네이버지도</a>
+  <a class="btn" href="https://map.kakao.com/link/search/{qq}" target="_blank" rel="noopener">카카오지도</a>
 </div>
 """
 
