@@ -53,7 +53,18 @@ def normalize_headers(headers: list[str]) -> dict[str, int]:
     return norm
 
 def load_items(csv_path: Path) -> list[dict]:
-    with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
+    def open_csv_any_encoding(csv_path):
+    # UTF-8 우선, 안 되면 CP949/EUC-KR로 재시도
+    for enc in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
+        try:
+            return open(csv_path, "r", encoding=enc, newline="")
+        except UnicodeDecodeError:
+            continue
+    # 마지막: 그래도 안 되면 예외 발생
+    return open(csv_path, "r", encoding="utf-8", errors="strict", newline="")
+
+with open_csv_any_encoding(csv_path) as f:
+
         reader = csv.reader(f)
         headers = next(reader, [])
         if not headers:
